@@ -202,6 +202,27 @@ function displayConfig(config) {
     }
   }
 
+  // Niveau 3 — Expert (MCP)
+  if (config.mcp_connections && config.mcp_connections.length > 0) {
+    const level3 = document.createElement("div");
+    level3.className = "config-level-banner level-expert";
+    level3.innerHTML = `<h3>Niveau 3 — Expert</h3><p>Connectez Claude directement à vos outils pour qu'il puisse lire, écrire et agir dedans. Nécessite Claude Desktop ou Claude Pro avec MCP.</p>`;
+    resultsDiv.appendChild(level3);
+
+    for (const mcp of config.mcp_connections) {
+      resultsDiv.appendChild(
+        createConfigSection(
+          "🔌",
+          `Connexion : ${mcp.name}`,
+          `Connecte Claude à ${mcp.tool_used_by_client || mcp.name}`,
+          mcp.setup_guide || "",
+          mcp.why,
+          mcp.what_it_does ? `Ce que ça permet : ${mcp.what_it_does}` : null
+        )
+      );
+    }
+  }
+
   // Bouton envoyer par email
   resultsDiv.appendChild(createEmailSection());
 

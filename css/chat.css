@@ -374,6 +374,15 @@ html, body {
   color: var(--terracotta-light);
 }
 
+.config-level-banner.level-expert {
+  background: rgba(96, 165, 250, 0.08);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.config-level-banner.level-expert h3 {
+  color: var(--info);
+}
+
 .config-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
