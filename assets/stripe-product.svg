@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="32" fill="#0f0f0f"/>
+  <rect x="156" y="120" width="200" height="200" rx="24" fill="#C27A5A"/>
+  <text x="256" y="242" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="80" fill="white">CS</text>
+  <text x="256" y="370" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="32" fill="#f0f0f0">Digital Setup</text>
+  <text x="256" y="410" text-anchor="middle" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="400" font-size="20" fill="#a0a0a0">Configuration Claude.ai</text>
+</svg>

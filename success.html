@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>Paiement confirm&eacute; — CS Digital Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .success-card {
+      max-width: 480px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--success-bg);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+    .success-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--success);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    h1 span { color: var(--terracotta); }
+    .success-text {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .success-text strong {
+      color: var(--text-primary);
+    }
+    .success-cta {
+      display: inline-block;
+      background: var(--terracotta);
+      color: white;
+      text-decoration: none;
+      padding: 0.75rem 2rem;
+      border-radius: var(--radius-lg);
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background 150ms ease;
+    }
+    .success-cta:hover {
+      background: var(--terracotta-light);
+    }
+    .success-note {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 1.5rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="success-card">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h1>Merci <span>pour votre achat !</span></h1>
+    <p class="success-text">
+      Votre paiement est confirm&eacute;.<br>
+      <strong>V&eacute;rifiez votre bo&icirc;te email</strong> (et vos spams) &mdash; vous allez recevoir un email de
+      <strong>setup@csbusiness.fr</strong> avec votre lien personnel pour d&eacute;marrer le diagnostic.
+    </p>
+    <a href="https://csbusiness.fr" class="success-cta">Visiter csbusiness.fr</a>
+    <p class="success-note">
+      Pas d'email re&ccedil;u apr&egrave;s 5 minutes ?<br>
+      Contactez catherine@csbusiness.fr
+    </p>
+  </div>
+</body>
+</html>
