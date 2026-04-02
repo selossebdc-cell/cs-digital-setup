@@ -328,100 +328,22 @@ function createFeedbackSection() {
   section.className = "config-feedback";
   section.id = "feedback-section";
   section.innerHTML = `
-    <h3>Votre avis compte !</h3>
-    <p>Cet outil est en version beta. Vos retours nous aident à l'améliorer. 6 questions, 2 minutes max.</p>
-
-    <div class="feedback-question">
-      <label>Note globale de l'expérience :</label>
-      <div class="feedback-stars" id="feedback-rating">
-        <button onclick="setRating(1)" data-star="1">★</button>
-        <button onclick="setRating(2)" data-star="2">★</button>
-        <button onclick="setRating(3)" data-star="3">★</button>
-        <button onclick="setRating(4)" data-star="4">★</button>
-        <button onclick="setRating(5)" data-star="5">★</button>
-      </div>
-    </div>
-
-    <div class="feedback-question">
-      <label>La configuration générée vous semble utile ?</label>
-      <div class="feedback-yesno">
-        <button onclick="setFeedback('useful', true, this)" class="fb-btn">Oui</button>
-        <button onclick="setFeedback('useful', false, this)" class="fb-btn">Pas vraiment</button>
-      </div>
-    </div>
-
-    <div class="feedback-question">
-      <label>L'outil était facile à utiliser ?</label>
-      <div class="feedback-yesno">
-        <button onclick="setFeedback('easy_to_use', true, this)" class="fb-btn">Oui</button>
-        <button onclick="setFeedback('easy_to_use', false, this)" class="fb-btn">Pas vraiment</button>
-      </div>
-    </div>
-
-    <div class="feedback-question">
-      <label>Vous le recommanderiez à un(e) collègue ?</label>
-      <div class="feedback-yesno">
-        <button onclick="setFeedback('would_recommend', true, this)" class="fb-btn">Oui</button>
-        <button onclick="setFeedback('would_recommend', false, this)" class="fb-btn">Pas vraiment</button>
-      </div>
-    </div>
-
-    <div class="feedback-question">
-      <label>Ce que vous avez le plus apprécié :</label>
-      <textarea id="feedback-best" class="feedback-text" placeholder="En quelques mots..." rows="2"></textarea>
-    </div>
-
-    <div class="feedback-question">
-      <label>Combien seriez-vous prêt(e) à payer pour cet outil ?</label>
-      <div class="feedback-yesno feedback-price">
-        <button onclick="setPrice('0-30', this)" class="fb-btn">Moins de 30 €</button>
-        <button onclick="setPrice('30-60', this)" class="fb-btn">30 à 60 €</button>
-        <button onclick="setPrice('60-100', this)" class="fb-btn">60 à 100 €</button>
-        <button onclick="setPrice('100+', this)" class="fb-btn">Plus de 100 €</button>
-      </div>
-    </div>
-
-    <div class="feedback-question">
-      <label>Ce qu'on pourrait améliorer :</label>
-      <textarea id="feedback-improve" class="feedback-text" placeholder="En quelques mots..." rows="2"></textarea>
-    </div>
-
-    <button id="feedback-submit-btn" class="feedback-submit" onclick="submitFeedback()">Envoyer mes retours</button>
+    <h3>Une remarque, une suggestion ?</h3>
+    <p>N'h\u00e9sitez pas \u00e0 me faire un retour sur votre exp\u00e9rience.</p>
+    <textarea id="feedback-comment" class="feedback-text" placeholder="Vos remarques, suggestions ou questions..." rows="4"></textarea>
+    <button id="feedback-submit-btn" class="feedback-submit" onclick="submitFeedback()">Envoyer</button>
     <p id="feedback-status" class="feedback-status"></p>
   `;
   return section;
 }
 
-let feedbackData = { rating: 0, useful: null, easy_to_use: null, would_recommend: null, price_willing: null };
-
-function setRating(n) {
-  feedbackData.rating = n;
-  document.querySelectorAll("#feedback-rating button").forEach((btn) => {
-    btn.classList.toggle("active", parseInt(btn.dataset.star) <= n);
-  });
-}
-
-function setFeedback(key, value, btn) {
-  feedbackData[key] = value;
-  btn.parentElement.querySelectorAll(".fb-btn").forEach((b) => b.classList.remove("active"));
-  btn.classList.add("active");
-}
-
-function setPrice(value, btn) {
-  feedbackData.price_willing = value;
-  btn.parentElement.querySelectorAll(".fb-btn").forEach((b) => b.classList.remove("active"));
-  btn.classList.add("active");
-}
-
 async function submitFeedback() {
   const btn = document.getElementById("feedback-submit-btn");
   const status = document.getElementById("feedback-status");
+  const comment = document.getElementById("feedback-comment")?.value?.trim() || "";
 
-  feedbackData.best_part = document.getElementById("feedback-best")?.value || "";
-  feedbackData.to_improve = document.getElementById("feedback-improve")?.value || "";
-
-  if (!feedbackData.rating) {
-    status.textContent = "Merci de donner une note (les étoiles)";
+  if (!comment) {
+    status.textContent = "Merci d'\u00e9crire un petit mot avant d'envoyer";
     status.style.color = "var(--warning)";
     return;
   }
@@ -433,22 +355,22 @@ async function submitFeedback() {
     const res = await fetch(`${SUPABASE_FUNCTIONS_URL_CONFIG}/submit-feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: sessionToken, ...feedbackData }),
+      body: JSON.stringify({ token: sessionToken, comment }),
     });
 
     if (res.ok) {
       btn.textContent = "Merci !";
       btn.classList.add("sent");
-      status.textContent = "Vos retours ont été envoyés. Merci beaucoup !";
+      status.textContent = "Merci pour votre retour !";
       status.style.color = "var(--success)";
     } else {
-      btn.textContent = "Envoyer mes retours";
+      btn.textContent = "Envoyer";
       btn.disabled = false;
-      status.textContent = "Erreur, veuillez réessayer";
+      status.textContent = "Erreur, veuillez r\u00e9essayer";
       status.style.color = "var(--danger)";
     }
   } catch {
-    btn.textContent = "Envoyer mes retours";
+    btn.textContent = "Envoyer";
     btn.disabled = false;
     status.textContent = "Erreur de connexion";
     status.style.color = "var(--danger)";
