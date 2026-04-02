@@ -17,6 +17,30 @@ let sessionData = null;
 let isStreaming = false;
 
 // ============================================
+// Fingerprint appareil (anti-partage)
+// ============================================
+function getDeviceFingerprint() {
+  const parts = [
+    navigator.userAgent,
+    screen.width + "x" + screen.height,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+    screen.colorDepth,
+  ];
+  // Hash simple mais suffisant
+  let hash = 0;
+  const str = parts.join("|");
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return "fp_" + Math.abs(hash).toString(36);
+}
+
+const deviceFingerprint = getDeviceFingerprint();
+
+// ============================================
 // Éléments DOM
 // ============================================
 const loadingScreen = document.getElementById("loading-screen");
@@ -43,10 +67,15 @@ async function init() {
   try {
     // Charger la session
     const res = await fetch(
-      `${SUPABASE_FUNCTIONS_URL}/get-session?token=${sessionToken}`
+      `${SUPABASE_FUNCTIONS_URL}/get-session?token=${sessionToken}&fp=${deviceFingerprint}`
     );
 
     if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      if (errData.error === "device_mismatch") {
+        showDeviceError();
+        return;
+      }
       showError();
       return;
     }
@@ -105,6 +134,16 @@ function showError() {
   loadingScreen.style.display = "none";
   errorScreen.style.display = "flex";
   chatScreen.style.display = "none";
+}
+
+function showDeviceError() {
+  loadingScreen.style.display = "none";
+  chatScreen.style.display = "none";
+  errorScreen.style.display = "flex";
+  const errorTitle = errorScreen.querySelector("h2");
+  const errorText = errorScreen.querySelector("p");
+  if (errorTitle) errorTitle.textContent = "Lien personnel";
+  if (errorText) errorText.textContent = "Ce lien est associé à un autre appareil. Chaque configuration est personnelle et liée à l'appareil utilisé lors du premier accès. Contactez catherine@csbusiness.fr si vous avez besoin d'aide.";
 }
 
 function showChat() {
@@ -195,7 +234,7 @@ async function sendFirstMessage() {
     const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: sessionToken, message: "Bonjour" }),
+      body: JSON.stringify({ token: sessionToken, message: "Bonjour", fingerprint: deviceFingerprint }),
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -277,7 +316,7 @@ async function sendMessage(text) {
     const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: sessionToken, message: text }),
+      body: JSON.stringify({ token: sessionToken, message: text, fingerprint: deviceFingerprint }),
     });
 
     if (!res.ok) {
