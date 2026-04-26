@@ -10,6 +10,43 @@ const SUPABASE_FUNCTIONS_URL =
   "https://ptksijwyvecufcvcpntp.supabase.co/functions/v1";
 
 // ============================================
+// Compression de l'historique
+// ============================================
+function compressMessages(messages, keepLast = 5) {
+  if (!messages || messages.length === 0) return [];
+  if (messages.length <= keepLast + 10) return messages;
+
+  const keepFull = messages.slice(-keepLast);
+  const toCompress = messages.slice(0, messages.length - keepLast);
+  const compressed = [];
+
+  // Résumer par blocs de 10
+  for (let i = 0; i < toCompress.length; i += 10) {
+    const chunk = toCompress.slice(i, Math.min(i + 10, toCompress.length));
+    const keyPoints = [];
+
+    for (const msg of chunk) {
+      if (msg.role === "user") {
+        const firstLine = msg.split("\n")[0].trim();
+        if (firstLine.length > 0) {
+          const truncated = firstLine.length > 60 ? firstLine.slice(0, 60) + "..." : firstLine;
+          keyPoints.push(`Q: ${truncated}`);
+        }
+      }
+    }
+
+    if (keyPoints.length > 0) {
+      compressed.push({
+        role: "system",
+        content: `[DIAGNOSTIC_HISTORY] Messages ${i + 1}-${Math.min(i + 10, toCompress.length)}: ${keyPoints.join(" | ")}`,
+      });
+    }
+  }
+
+  return [...compressed, ...keepFull];
+}
+
+// ============================================
 // État
 // ============================================
 let sessionToken = null;
