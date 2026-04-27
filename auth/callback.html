@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>Connexion — CS Digital Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/variables.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .auth-container {
+      max-width: 400px;
+      text-align: center;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 2rem;
+      border: 3px solid var(--border);
+      border-top: 3px solid var(--terracotta);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h2 {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+    .status-text {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .error-box {
+      background: rgba(220, 38, 38, 0.1);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .error-box h3 {
+      color: #dc2626;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .error-box p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .error-box a {
+      color: var(--terracotta);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .error-box a:hover {
+      text-decoration: underline;
+    }
+    .success-box {
+      color: var(--success);
+    }
+    .success-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1.5rem;
+      background: var(--success-bg);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .success-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--success);
+    }
+    .redirect-message {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div id="loading-state">
+      <div class="spinner"></div>
+      <h2>Connexion en cours</h2>
+      <p class="status-text">Vérification de votre lien de connexion...</p>
+    </div>
+
+    <div id="success-state" style="display: none;">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2 class="success-box">Connexion réussie</h2>
+      <p class="status-text">Redirection vers votre diagnostic...</p>
+      <p class="redirect-message" id="redirect-timer">Redirection en 3 secondes...</p>
+    </div>
+
+    <div id="error-state" style="display: none;">
+      <h2>Lien invalide ou expiré</h2>
+      <div class="error-box">
+        <h3>⚠️ Erreur d'authentification</h3>
+        <p id="error-message">
+          Votre lien de connexion est invalide ou a expiré.<br>
+          <a href="https://csbusiness.fr">Retour à l'accueil</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ptksijwyvecufcvcpntp.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0a3NpandzeWVjdWZjdmNwbnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjIwNTA1MDAsImV4cCI6MTk3NzYyNjUwMH0.5w4Z1g8H1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z1Z0";
+
+    async function handleCallback() {
+      const loadingState = document.getElementById("loading-state");
+      const successState = document.getElementById("success-state");
+      const errorState = document.getElementById("error-state");
+
+      try {
+        // Extract OTP and email from URL hash (#access_token=..., #type=recovery, etc.)
+        const hash = window.location.hash.slice(1);
+        const params = new URLSearchParams(hash);
+
+        const accessToken = params.get("access_token");
+        const type = params.get("type");
+        const errorCode = params.get("error");
+        const errorDescription = params.get("error_description");
+
+        // Check for errors from Supabase
+        if (errorCode) {
+          throw new Error(errorDescription || "Authentication failed");
+        }
+
+        // Verify we have the expected token type
+        if (type !== "recovery") {
+          throw new Error("Invalid token type");
+        }
+
+        if (!accessToken) {
+          throw new Error("No access token provided");
+        }
+
+        // Validate token with Supabase Auth
+        const validateResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!validateResponse.ok) {
+          throw new Error("Token validation failed");
+        }
+
+        const userData = await validateResponse.json();
+        const userEmail = userData.email;
+
+        // Store JWT in localStorage
+        localStorage.setItem("jwt_token", accessToken);
+        localStorage.setItem("user_email", userEmail);
+
+        // Clear the URL hash (security + UX)
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // Show success state
+        loadingState.style.display = "none";
+        errorState.style.display = "none";
+        successState.style.display = "block";
+
+        // Countdown + redirect
+        let seconds = 3;
+        const timerEl = document.getElementById("redirect-timer");
+        const countdown = setInterval(() => {
+          seconds--;
+          if (seconds > 0) {
+            timerEl.textContent = `Redirection en ${seconds} seconde${seconds > 1 ? "s" : ""}...`;
+          } else {
+            clearInterval(countdown);
+            window.location.href = "/chat.html";
+          }
+        }, 1000);
+      } catch (err) {
+        console.error("Auth error:", err);
+
+        // Show error state
+        loadingState.style.display = "none";
+        successState.style.display = "none";
+        errorState.style.display = "block";
+
+        const errorMsg = document.getElementById("error-message");
+        errorMsg.innerHTML = `
+          ${err.message || "Une erreur est survenue lors de la connexion."}<br><br>
+          <a href="https://csbusiness.fr">Retour à l'accueil</a>
+        `;
+      }
+    }
+
+    // Run on page load
+    handleCallback();
+  </script>
+</body>
+</html>

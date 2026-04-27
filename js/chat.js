@@ -49,33 +49,19 @@ function compressMessages(messages, keepLast = 5) {
 // ============================================
 // État
 // ============================================
-let sessionToken = null;
+let jwtToken = null;
+let userEmail = null;
+let sessionId = null;
 let sessionData = null;
 let isStreaming = false;
+let conversationHistory = [];
 
 // ============================================
-// Fingerprint appareil (anti-partage)
+// Generate unique session ID for this diagnostic
 // ============================================
-function getDeviceFingerprint() {
-  const parts = [
-    navigator.userAgent,
-    screen.width + "x" + screen.height,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    navigator.language,
-    screen.colorDepth,
-  ];
-  // Hash simple mais suffisant
-  let hash = 0;
-  const str = parts.join("|");
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return "fp_" + Math.abs(hash).toString(36);
+function generateSessionId() {
+  return "session_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
 }
-
-const deviceFingerprint = getDeviceFingerprint();
 
 // ============================================
 // Éléments DOM
@@ -92,72 +78,25 @@ const sendBtn = document.getElementById("send-btn");
 // Initialisation
 // ============================================
 async function init() {
-  // Extraire le token de l'URL
-  const params = new URLSearchParams(window.location.search);
-  sessionToken = params.get("token");
+  // Extract JWT from localStorage (set by auth/callback.html)
+  jwtToken = localStorage.getItem("jwt_token");
+  userEmail = localStorage.getItem("user_email");
 
-  if (!sessionToken) {
+  if (!jwtToken || !userEmail) {
+    console.log("No JWT found, redirecting to home");
     showError();
     return;
   }
 
+  // Generate a unique session ID for this diagnostic session
+  sessionId = generateSessionId();
+
   try {
-    // Charger la session
-    const res = await fetch(
-      `${SUPABASE_FUNCTIONS_URL}/get-session?token=${sessionToken}&fp=${deviceFingerprint}`
-    );
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      if (errData.error === "device_mismatch") {
-        showDeviceError();
-        return;
-      }
-      showError();
-      return;
-    }
-
-    const data = await res.json();
-    sessionData = data.session;
-
-    // Afficher le chat
+    // Show chat screen
     showChat();
 
-    // Si la config existe déjà, l'afficher directement
-    if (data.config) {
-      showChat();
-      for (const msg of data.messages) {
-        appendMessage(msg.role, msg.content);
-      }
-      displayConfig(data.config);
-      restoreChecklist();
-      return;
-    }
-
-    // Si le diagnostic est terminé mais pas encore généré → lancer la génération
-    if (data.session.status === "diagnostic") {
-      showChat();
-      for (const msg of data.messages) {
-        appendMessage(msg.role, msg.content);
-      }
-      scrollToBottom();
-      chatInput.disabled = true;
-      sendBtn.disabled = true;
-      chatInput.placeholder = "Diagnostic terminé";
-      generateConfig(sessionToken);
-      return;
-    }
-
-    // Afficher les messages existants (reprise de session)
-    if (data.messages && data.messages.length > 0) {
-      for (const msg of data.messages) {
-        appendMessage(msg.role, msg.content);
-      }
-      scrollToBottom();
-    } else {
-      // Première visite : déclencher le message de bienvenue
-      await sendFirstMessage();
-    }
+    // First visit: send welcome message to start diagnostic
+    await sendFirstMessage();
   } catch (err) {
     console.error("Init error:", err);
     showError();
@@ -270,10 +209,24 @@ async function sendFirstMessage() {
   try {
     const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: sessionToken, message: "Bonjour", fingerprint: deviceFingerprint }),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwtToken}`,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        message: "Bonjour",
+        conversation_history: conversationHistory,
+        client_name: userEmail,
+      }),
     });
 
+    if (res.status === 401) {
+      throw new Error("Session expirée. Veuillez vous reconnecter.");
+    }
+    if (res.status === 403) {
+      throw new Error("Accès refusé. Veuillez vérifier votre paiement.");
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     typingIndicator.classList.remove("visible");
@@ -317,10 +270,14 @@ async function sendFirstMessage() {
       .trim();
     bubble.innerHTML = markdownToHtml(cleanFinal);
     bubble.removeAttribute("id");
+
+    // Store in conversation history
+    conversationHistory.push({ role: "user", content: "Bonjour" });
+    conversationHistory.push({ role: "assistant", content: cleanFinal });
   } catch (err) {
     console.error("First message error:", err);
     typingIndicator.classList.remove("visible");
-    appendMessage("assistant", "Bienvenue ! Une erreur est survenue au chargement. Veuillez rafraîchir la page.");
+    appendMessage("assistant", `Erreur: ${err.message}`);
   } finally {
     isStreaming = false;
     sendBtn.disabled = false;
@@ -352,10 +309,24 @@ async function sendMessage(text) {
   try {
     const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: sessionToken, message: text, fingerprint: deviceFingerprint }),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwtToken}`,
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        message: text,
+        conversation_history: conversationHistory,
+        client_name: userEmail,
+      }),
     });
 
+    if (res.status === 401) {
+      throw new Error("Session expirée. Veuillez vous reconnecter.");
+    }
+    if (res.status === 403) {
+      throw new Error("Accès refusé. Veuillez vérifier votre paiement.");
+    }
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -424,6 +395,10 @@ async function sendMessage(text) {
     bubble.innerHTML = markdownToHtml(cleanFinal);
     bubble.removeAttribute("id");
 
+    // Store in conversation history
+    conversationHistory.push({ role: "user", content: text });
+    conversationHistory.push({ role: "assistant", content: cleanFinal });
+
     // Vérifier si diagnostic complet
     if (fullText.includes("[DIAGNOSTIC_COMPLETE]")) {
       showDiagnosticComplete();
@@ -431,10 +406,7 @@ async function sendMessage(text) {
   } catch (err) {
     console.error("Stream error:", err);
     typingIndicator.classList.remove("visible");
-    appendMessage(
-      "assistant",
-      "Désolé, une erreur est survenue. Veuillez rafraîchir la page et réessayer."
-    );
+    appendMessage("assistant", `Erreur: ${err.message}`);
   } finally {
     isStreaming = false;
     sendBtn.disabled = false;
